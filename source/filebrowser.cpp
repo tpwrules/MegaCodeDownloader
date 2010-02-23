@@ -17,6 +17,7 @@
 
 #include "filebrowser.h"
 #include "menu.h"
+#include "netconsole.h"
 
 BROWSERINFO browser;
 BROWSERENTRY * browserList = NULL; // list of files/folders in browser
@@ -84,7 +85,7 @@ int UpdateDirName()
 		if ((strlen(browser.dir)+1+strlen(browserList[browser.selIndex].filename)) < MAXPATHLEN)
 		{
 			/* update current directory name */
-			sprintf(browser.dir, "%s/%s",browser.dir, browserList[browser.selIndex].filename);
+			sprintf(browser.dir, "%s%s/",browser.dir, browserList[browser.selIndex].filename);
 			return 1;
 		}
 		else
@@ -163,6 +164,7 @@ ParseDirectory()
 			{
 				ResetBrowser();
 				entryNum = -1;
+				dbgprintf("Not enough memory for browser!\n");
 				break;
 			}
 			else
@@ -220,7 +222,7 @@ int BrowserChangeFolder()
  ***************************************************************************/
 int BrowseDevice()
 {
-	sprintf(browser.dir, "/");
+	sprintf(browser.dir, "txtcodes/");
 	sprintf(rootdir, "sd:/");
 	ParseDirectory(); // Parse root directory
 	return browser.numEntries;

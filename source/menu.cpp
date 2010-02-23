@@ -236,7 +236,7 @@ InitGUIThreads()
  *
  * Opens an on-screen keyboard window, with the data entered being stored
  * into the specified variable.
- ***************************************************************************/
+ ***************************************************************************
 static void OnScreenKeyboard(char * var, u16 maxlen)
 {
 	int save = -1;
@@ -309,14 +309,13 @@ static void OnScreenKeyboard(char * var, u16 maxlen)
 
 /****************************************************************************
  * MenuBrowseDevice
- ***************************************************************************/
+ ***************************************************************************
 static int MenuBrowseDevice()
 {
 	char title[100];
 	int i;
 
 	ShutoffRumble();
-	//BrowseDevice();
 	// populate initial directory listing
 	if(BrowseDevice() <= 0)
 	{
@@ -346,7 +345,7 @@ static int MenuBrowseDevice()
 	GuiFileBrowser fileBrowser(552, 248);
 	fileBrowser.SetAlignment(ALIGN_CENTRE, ALIGN_TOP);
 	fileBrowser.SetPosition(0, 100);
-
+	
 	GuiImageData btnOutline(button_png);
 	GuiImageData btnOutlineOver(button_over_png);
 	GuiText backBtnTxt("Go Back", 24, (GXColor){0, 0, 0, 255});
@@ -384,15 +383,19 @@ static int MenuBrowseDevice()
 				// check corresponding browser entry
 				if(browserList[browser.selIndex].isdir)
 				{
-					if(BrowserChangeFolder())
+					dbgprintf("Dir clicked!\n");
+					int val = BrowserChangeFolder();
+					if(val)
 					{
 						fileBrowser.ResetState();
 						fileBrowser.fileList[0]->SetState(STATE_SELECTED);
 						fileBrowser.TriggerUpdate();
+						dbgprintf("Dir click succeeded! (%d)\n", val);
 					}
 					else
 					{
 						menu = MENU_BROWSE_DEVICE;
+						dbgprintf("Dir failed!\n");
 						break;
 					}
 				}
@@ -417,7 +420,7 @@ static int MenuBrowseDevice()
 
 /****************************************************************************
  * MenuSettings
- ***************************************************************************/
+ ***************************************************************************
 static int MenuSettings()
 {
 	int menu = MENU_NONE;
@@ -613,7 +616,14 @@ static int MenuSettings()
 static int MenuConvertCode()
 {
 	int menu = MENU_NONE;
-
+	int i;
+	
+	if(BrowseDevice() <= 0)
+	{
+		WindowPrompt("Error!", "Error browsing device!", "Aww :(", NULL);
+		return MENU_MAIN;
+	}
+	
 	GuiText titleTxt("Convert", 28, (GXColor){255, 255, 255, 255});
 	titleTxt.SetAlignment(ALIGN_LEFT, ALIGN_TOP);
 	titleTxt.SetPosition(50,50);
@@ -657,11 +667,16 @@ static int MenuConvertCode()
 	exitBtn.SetTrigger(&trigHome);
 	exitBtn.SetEffectGrow();
 
+	GuiFileBrowser fileBrowser(552, 248);
+	fileBrowser.SetAlignment(ALIGN_CENTRE, ALIGN_TOP);
+	fileBrowser.SetPosition(0, 100);
+	
 	HaltGui();
 	GuiWindow w(screenwidth, screenheight);
 	w.Append(&titleTxt);
 	w.Append(&menuBtn);
 	w.Append(&exitBtn);
+	w.Append(&fileBrowser);
 
 	mainWindow->Append(&w);
 
@@ -678,6 +693,41 @@ static int MenuConvertCode()
 		else if(exitBtn.GetState() == STATE_CLICKED)
 		{
 			menu = MENU_EXIT;
+		}
+		for(i=0; i < FILE_PAGESIZE; i++)
+		{
+			if(fileBrowser.fileList[i]->GetState() == STATE_CLICKED)
+			{
+				fileBrowser.fileList[i]->ResetState();
+				// check corresponding browser entry
+				if(browserList[browser.selIndex].isdir)
+				{
+					//dbgprintf("Dir clicked!\n");
+					int val = BrowserChangeFolder();
+					if(val)
+					{
+						fileBrowser.ResetState();
+						fileBrowser.fileList[0]->SetState(STATE_SELECTED);
+						fileBrowser.TriggerUpdate();
+					//	dbgprintf("Dir click succeeded! (%d)\n", val);
+					}
+					else
+					{
+						menu = MENU_BROWSE_DEVICE;
+					//	dbgprintf("Dir failed!\n");
+						break;
+					}
+				}
+				else
+				{
+					char *filename = browserList[browser.selIndex].filename;
+					int choice = WindowPrompt("Load", "Load this cheat file?", "Yes", "No");
+					if (choice)
+					{
+						menu = MENU_CHEAT_LIST;
+					}
+				}
+			}
 		}
 	}
 
@@ -839,7 +889,7 @@ static int MenuGameList()
 
 /****************************************************************************
  * MenuSettingsFile
- ***************************************************************************/
+ ***************************************************************************
 static int MenuSettingsFile()
 {
 	int menu = MENU_NONE;
@@ -1565,6 +1615,25 @@ static int MenuGameRegions()
 	return menu;
 }
 
+static int MenuCheatList()
+{
+	int menu = MENU_NONE;
+	
+	HaltGui();
+	GuiWindow w(screenwidth, screenheight);
+	
+	mainWindow->Append(&w);
+	
+	while (menu == MENU_NONE)
+	{
+		usleep(THREAD_SLEEP);
+		menu = MENU_MAIN;
+	}
+	HaltGui();
+	mainWindow->Remove(&w);
+	return menu;
+}
+
 /****************************************************************************
  * MainMenu
  ***************************************************************************/
@@ -1735,6 +1804,9 @@ void MainMenu(int menu)
 				break;
 			case MENU_CONVERT_CODE:
 				currentMenu = MenuConvertCode();
+				break;
+			case MENU_CHEAT_LIST:
+				currentMenu = MenuCheatList();
 				break;
 			default: // unrecognized menu
 				currentMenu = MenuMain();

@@ -30,6 +30,9 @@
 #define		REVERSE_TEXT	5
 #define		HIDDEN_TEXT		6
 
+// Settings
+#define NOBG_MUSIC
+
 using std::string;
 
 void WiiResetPressed();

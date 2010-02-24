@@ -28,7 +28,9 @@
 
 static GuiImageData * pointer[4];
 static GuiImage * bgImg = NULL;
+#ifndef NOBG_MUSIC
 static GuiSound * bgMusic = NULL;
+#endif
 static GuiWindow * mainWindow = NULL;
 static lwp_t guithread = LWP_THREAD_NULL;
 static bool guiHalt = true;
@@ -1768,10 +1770,11 @@ void MainMenu(int menu)
 	trigA.SetSimpleTrigger(-1, WPAD_BUTTON_A | WPAD_CLASSIC_BUTTON_A, PAD_BUTTON_A);
 
 	ResumeGui();
-
+#ifndef NOBG_MUSIC
 	bgMusic = new GuiSound(bg_music_ogg, bg_music_ogg_size, SOUND_OGG);
 	bgMusic->SetVolume(50);
 	bgMusic->Play(); // startup music
+#endif
 
 	while(currentMenu != MENU_EXIT)
 	{
@@ -1819,9 +1822,10 @@ void MainMenu(int menu)
 	while(1) usleep(THREAD_SLEEP);
 
 	HaltGui();
-
+#ifndef NOBG_MUSIC
 	bgMusic->Stop();
 	delete bgMusic;
+#endif
 	delete bgImg;
 	delete mainWindow;
 

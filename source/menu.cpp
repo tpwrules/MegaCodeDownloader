@@ -23,6 +23,12 @@
 #include "main.h"
 #include "download.h"
 #include "netconsole.h"
+#include "cheatparser.h"
+
+extern "C" {
+#include <elm.h>
+#include <usync.h>
+}
 
 #define THREAD_SLEEP 100
 
@@ -35,6 +41,8 @@ static GuiWindow * mainWindow = NULL;
 static lwp_t guithread = LWP_THREAD_NULL;
 static bool guiHalt = true;
 static game_info info;
+static cheatCodeList *codes = NULL;
+static FILE *cheatCodesFile = NULL;
 
 /****************************************************************************
  * ResumeGui
@@ -728,6 +736,12 @@ static int MenuConvertCode()
 					{
 						menu = MENU_CHEAT_LIST;
 					}
+					char f[MAXPATHLEN];
+					strcpy((char*)&f, "sd:/");
+					strcat((char*)&f, browser.dir);
+					strcat((char*)&f, filename);
+					cheatCodesFile = fopen(f, "r");
+					dbgprintf(f);
 				}
 			}
 		}
@@ -1621,15 +1635,104 @@ static int MenuCheatList()
 {
 	int menu = MENU_NONE;
 	
+	if (cheatCodesFile == NULL)
+	{
+		WindowPrompt("HOLY CRAP!", "cheatCodesFile is null!!!11!", "AAAA!", "AAAA!");
+		return MENU_MAIN;
+	}
+	
+	codes = parseCode(cheatCodesFile);
+	
+	/*for (int i=0;i<codes->numEntries;i++)
+	{
+		dbgprintf("%s^ NAME", codes->entries[i]->name);
+		for (int j=0;j<codes->entries[i]->numCodes;j++)
+		{
+			dbgprintf("%s", codes->entries[i]->codes[j]);
+		}
+	}*/
+	
+	GuiText titleTxt("Convert - Code List", 28, (GXColor){255, 255, 255, 255});
+	titleTxt.SetAlignment(ALIGN_LEFT, ALIGN_TOP);
+	titleTxt.SetPosition(50,50);
+	
+	GuiSound btnSoundOver(button_over_pcm, button_over_pcm_size, SOUND_PCM);
+	GuiImageData btnOutline(button_png);
+	GuiImageData btnOutlineOver(button_over_png);
+	GuiImageData btnLargeOutline(button_large_png);
+	GuiImageData btnLargeOutlineOver(button_large_over_png);
+	
+	GuiTrigger trigA;
+	trigA.SetSimpleTrigger(-1, WPAD_BUTTON_A | WPAD_CLASSIC_BUTTON_A, PAD_BUTTON_A);
+	GuiTrigger trigHome;
+	trigHome.SetButtonOnlyTrigger(-1, WPAD_BUTTON_HOME | WPAD_CLASSIC_BUTTON_HOME, 0);
+	
+	GuiText menuBtnTxt("Main Menu", 22, (GXColor){0, 0, 0, 255});
+	GuiImage menuBtnImg(&btnOutline);
+	GuiImage menuBtnImgOver(&btnOutlineOver);
+	GuiButton menuBtn(btnOutline.GetWidth(), btnOutline.GetHeight());
+	menuBtn.SetAlignment(ALIGN_LEFT, ALIGN_BOTTOM);
+	menuBtn.SetPosition(300, -35);
+	menuBtn.SetLabel(&menuBtnTxt);
+	menuBtn.SetImage(&menuBtnImg);
+	menuBtn.SetImageOver(&menuBtnImgOver);
+	menuBtn.SetSoundOver(&btnSoundOver);
+	menuBtn.SetTrigger(&trigA);
+	menuBtn.SetTrigger(&trigHome);
+	menuBtn.SetEffectGrow();
+	
+	GuiText exitBtnTxt("Exit", 22, (GXColor){0, 0, 0, 255});
+	GuiImage exitBtnImg(&btnOutline);
+	GuiImage exitBtnImgOver(&btnOutlineOver);
+	GuiButton exitBtn(btnOutline.GetWidth(), btnOutline.GetHeight());
+	exitBtn.SetAlignment(ALIGN_LEFT, ALIGN_BOTTOM);
+	exitBtn.SetPosition(100, -35);
+	exitBtn.SetLabel(&exitBtnTxt);
+	exitBtn.SetImage(&exitBtnImg);
+	exitBtn.SetImageOver(&exitBtnImgOver);
+	exitBtn.SetSoundOver(&btnSoundOver);
+	exitBtn.SetTrigger(&trigA);
+	exitBtn.SetTrigger(&trigHome);
+	exitBtn.SetEffectGrow();
+	
+	OptionList options;
+	int i;
+	for (i=0;i<codes->numEntries;i++)
+	{
+		strcpy(options.name[i], codes->entries[i]->name);
+		strcpy(options.value[i], "");
+	}
+	options.length = i;
+	
+	GuiOptionBrowser optionBrowser(552, 248, &options);
+	optionBrowser.SetPosition(0, 108);
+	optionBrowser.SetAlignment(ALIGN_CENTRE, ALIGN_TOP);
+	optionBrowser.SetCol2Position(550);
+	optionBrowser.SetFocus(true);
+	
 	HaltGui();
 	GuiWindow w(screenwidth, screenheight);
 	
+	w.Append(&titleTxt);
+	w.Append(&menuBtn);
+	w.Append(&exitBtn);
+	w.Append(&optionBrowser);
+	
 	mainWindow->Append(&w);
+	ResumeGui();
 	
 	while (menu == MENU_NONE)
 	{
 		usleep(THREAD_SLEEP);
-		menu = MENU_MAIN;
+		
+		if(menuBtn.GetState() == STATE_CLICKED)
+		{
+			menu = MENU_MAIN;
+		}
+		else if(exitBtn.GetState() == STATE_CLICKED)
+		{
+			menu = MENU_EXIT;
+		}
 	}
 	HaltGui();
 	mainWindow->Remove(&w);

@@ -704,6 +704,7 @@ static int MenuConvertCode()
 		{
 			menu = MENU_EXIT;
 		}
+		//~1736
 		for(i=0; i < FILE_PAGESIZE; i++)
 		{
 			if(fileBrowser.fileList[i]->GetState() == STATE_CLICKED)
@@ -730,7 +731,6 @@ static int MenuConvertCode()
 				}
 				else
 				{
-					char *filename = browserList[browser.selIndex].filename;
 					int choice = WindowPrompt("Load", "Load this cheat file?", "Yes", "No");
 					if (choice)
 					{
@@ -739,9 +739,8 @@ static int MenuConvertCode()
 					char f[MAXPATHLEN];
 					strcpy((char*)&f, "sd:/");
 					strcat((char*)&f, browser.dir);
-					strcat((char*)&f, filename);
+					strcat((char*)&f, browserList[browser.selIndex].filename);
 					cheatCodesFile = fopen(f, "r");
-					dbgprintf(f);
 				}
 			}
 		}
@@ -1643,6 +1642,12 @@ static int MenuCheatList()
 	
 	codes = parseCode(cheatCodesFile);
 	
+	if (codes == NULL)
+	{
+		WindowPrompt("Error", "Invalid cheat file!", "Aww :(", NULL);
+		return MENU_CONVERT_CODE;
+	}
+	
 	/*for (int i=0;i<codes->numEntries;i++)
 	{
 		dbgprintf("%s^ NAME", codes->entries[i]->name);
@@ -1672,7 +1677,7 @@ static int MenuCheatList()
 	GuiImage menuBtnImgOver(&btnOutlineOver);
 	GuiButton menuBtn(btnOutline.GetWidth(), btnOutline.GetHeight());
 	menuBtn.SetAlignment(ALIGN_LEFT, ALIGN_BOTTOM);
-	menuBtn.SetPosition(300, -35);
+	menuBtn.SetPosition(225, -35);
 	menuBtn.SetLabel(&menuBtnTxt);
 	menuBtn.SetImage(&menuBtnImg);
 	menuBtn.SetImageOver(&menuBtnImgOver);
@@ -1686,7 +1691,7 @@ static int MenuCheatList()
 	GuiImage exitBtnImgOver(&btnOutlineOver);
 	GuiButton exitBtn(btnOutline.GetWidth(), btnOutline.GetHeight());
 	exitBtn.SetAlignment(ALIGN_LEFT, ALIGN_BOTTOM);
-	exitBtn.SetPosition(100, -35);
+	exitBtn.SetPosition(25, -35);
 	exitBtn.SetLabel(&exitBtnTxt);
 	exitBtn.SetImage(&exitBtnImg);
 	exitBtn.SetImageOver(&exitBtnImgOver);
@@ -1695,12 +1700,29 @@ static int MenuCheatList()
 	exitBtn.SetTrigger(&trigHome);
 	exitBtn.SetEffectGrow();
 	
+	GuiText makeBtnTxt("Make GCT", 22, (GXColor){0, 0, 0, 255});
+	GuiImage makeBtnImg(&btnOutline);
+	GuiImage makeBtnImgOver(&btnOutlineOver);
+	GuiButton makeBtn(btnOutline.GetWidth(), btnOutline.GetHeight());
+	makeBtn.SetAlignment(ALIGN_LEFT, ALIGN_BOTTOM);
+	makeBtn.SetPosition(425, -35);
+	makeBtn.SetLabel(&makeBtnTxt);
+	makeBtn.SetImage(&makeBtnImg);
+	makeBtn.SetImageOver(&makeBtnImgOver);
+	makeBtn.SetSoundOver(&btnSoundOver);
+	makeBtn.SetTrigger(&trigA);
+	makeBtn.SetTrigger(&trigHome);
+	makeBtn.SetEffectGrow();
+	
 	OptionList options;
 	int i;
+	char buf[4096];
 	for (i=0;i<codes->numEntries;i++)
 	{
-		strcpy(options.name[i], codes->entries[i]->name);
-		strcpy(options.value[i], "");
+		strcpy((char*)&buf, "[-] ");
+		strcat((char*)&buf, codes->entries[i]->name);
+		strcpy(options.name[i], (char*)&buf);
+		strcpy(options.value[i], "-");
 	}
 	options.length = i;
 	
@@ -1716,10 +1738,13 @@ static int MenuCheatList()
 	w.Append(&titleTxt);
 	w.Append(&menuBtn);
 	w.Append(&exitBtn);
+	w.Append(&makeBtn);
 	w.Append(&optionBrowser);
 	
 	mainWindow->Append(&w);
 	ResumeGui();
+	
+	int opt;
 	
 	while (menu == MENU_NONE)
 	{
@@ -1733,9 +1758,78 @@ static int MenuCheatList()
 		{
 			menu = MENU_EXIT;
 		}
+		else if(makeBtn.GetState() == STATE_CLICKED)
+		{
+			if (WindowPrompt("Make GCT?", "Are you sure you want to make a GCT file with these codes?", "Yes", "No"))
+			{
+				FILE *gct;
+				char path[MAXPATHLEN];
+				strcpy((char*)&path, "sd:/codes/");
+				strcat((char*)&path, codes->gameId);
+				strcat((char*)&path, ".gct");
+				dbgprintf("%s\n", &path);
+				gct = fopen((char*)&path, "w");
+				fwrite("\x00\xd0\xc0\xde\x00\xd0\xc0\xde", 1, 8, gct);
+				//fclose(gct);
+				int j,k;
+				unsigned long long codeval;
+				char codebuf[18];
+				//char codebuf2[8];
+				for (i=0;i<options.length;i++)
+				{
+					if (strcmp(options.value[i], "+") != 0)
+						continue;
+					for (j=0;j<codes->entries[i]->numCodes;j++)
+					{
+						memcpy((char*)&codebuf, codes->entries[i]->codes[j], 17);
+						memcpy((char*)&codebuf+8, (char*)&codebuf+9, 8);
+						codebuf[16] = 0;
+						for (k=0;k<16;k++)
+						{
+							if ((codebuf[k] < '0' or codebuf[k] > '9') and (codebuf[k] < 'A' or codebuf[k] > 'F'))
+							{
+								WindowPrompt("Error", "Non hex code found! Please make sure the codes you wanted to generate only have hex numbers (0-F)", "O NOES!", NULL);
+								goto exitloop;
+							}
+						}
+						codeval = strtoull((char*)&codebuf, NULL, 16);
+						fwrite(&codeval, 1, sizeof(codeval), gct);
+					}
+				}
+				fwrite("\xf0\x00\x00\x00\x00\x00\x00\x00", 1, 8, gct);
+				WindowPrompt("Done!", "It's done!", "Yay!", NULL);
+			exitloop:
+				fclose(gct);
+				menu = MENU_MAIN;
+			}
+		}
+		opt = optionBrowser.GetClickedOption();
+		if (opt > -1)
+		{
+			if (strcmp(options.value[opt], "-") == 0)
+			{
+				strcpy(options.value[opt], "+");
+				strcpy((char*)&buf, "[+] ");
+				strcat((char*)&buf, codes->entries[opt]->name);
+				strcpy(options.name[opt], (char*)&buf);
+			}
+			else
+			{
+				strcpy(options.value[opt], "-");
+				strcpy((char*)&buf, "[-] ");
+				strcat((char*)&buf, codes->entries[opt]->name);
+				strcpy(options.name[opt], (char*)&buf);
+			}
+			optionBrowser.ResetState();
+			optionBrowser.TriggerUpdate();
+			dbgprintf("%d\n", opt);
+		}
 	}
+	// ~717
+	
 	HaltGui();
 	mainWindow->Remove(&w);
+	nukeList(codes);
 	return menu;
 }
 

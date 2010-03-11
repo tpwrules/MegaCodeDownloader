@@ -9,7 +9,7 @@ cheatCodeList *parseCode(FILE *fp)
 	int i;
 	char c, c2;
 	char temp[256];
-	fread((void*)list->gameId, 6, 1, fp);
+	fgets((char*)list->gameId, 6, fp);
 	c = fgetc(fp);
 	cheatCodeEntry *currEntry;
 	fgets((char*)&list->gameName, 256, fp);
@@ -33,7 +33,7 @@ cheatCodeList *parseCode(FILE *fp)
 		while(!feof(fp))
 		{
 			c2 = fgetc(fp);
-			if ((c == '\n') & (c2 == '\n'))
+			if ((c == '\n') && (c2 == '\n'))
 				break;
 			c = c2;
 		}
@@ -43,4 +43,18 @@ cheatCodeList *parseCode(FILE *fp)
 		list->numEntries++;
 	}
 	return list;
+}
+
+void nukeList(cheatCodeList *list)
+{
+	int i,j;
+	for (i=0;i<list->numEntries;i++)
+	{
+		for (j=0;j<list->entries[i]->numCodes;j++)
+		{
+			delete[] list->entries[i]->codes[j];
+		}
+		delete[] list->entries[i];
+	}
+	delete list;
 }

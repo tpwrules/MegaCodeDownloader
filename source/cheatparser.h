@@ -37,6 +37,6 @@ struct cheatCodeList
 };
 
 cheatCodeList *parseCode(FILE*);
-void findLine(FILE*);
+void nukeList(cheatCodeList*);
 
 #endif

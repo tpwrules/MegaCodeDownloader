@@ -3,7 +3,7 @@
 static void *xfb = NULL;
 static GXRModeObj *rmode = NULL;
 
-#define MYIP 0xc0a80105		//192.168.0.146
+#define MYIP 0xc0a8015c
 //#define MYIP 0xc0a801b4		//192.168.1.144
 
 //s32 ExitRequested = 0;

@@ -1,7 +1,7 @@
 *******************************************************************************
 *                                                                             *
 *                                                                             *
-*                        MEGA CODE DOWNLOADER by megazig                      *
+*                       MEGA CODE DOWNLOADER by tpw_rules                     *
 *                                                                             *
 *                                                                             *
 *******************************************************************************
@@ -9,9 +9,15 @@
 	Ocarina cheat code downloader for the wii. Programmed to be open-source and
 easily updateable with extra features.  Uses geckocodes.org for cheat code
 downloads.  Big thanks to James0x57 for his great site and compilation of codes
+Handed off by megazig (original author) to tpw_rules for v0.4 and beyond!
 
 VERSION HISTORY
 ------------------------------
+v0.4	-	Has a GUI and ACTUALLY LAUNCHES!1!
+	+ Fixed a launch crash bug
+	+ Added TXT file loading and GCT generation
+v0.3	- 	GUI
+	+ Added a (broken) GUI
 v0.2	-	Initial commit converted to C++
 	+ Added colors to text
 v0.1	-	Initial commit programmed in C
